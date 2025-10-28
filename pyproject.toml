@@ -1,0 +1,16 @@
+[project]
+name = "chatbot"
+version = "0.1.0"
+description = "<todo>"
+readme = "README.md"
+requires-python = ">=3.13"
+dependencies = [
+    "accelerate>=1.10.1",
+    "inference[local]",
+    "torch>=2.8.0",
+    "transformers>=4.57.0",
+    "weaviate-client>=4.17.0",
+]
+
+[tool.uv.sources]
+inference = { git = "https://github.com/BMLN/inference.git" }

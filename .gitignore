@@ -1,0 +1,9 @@
+.venv
+.env
+.ollama
+*.lock
+*__pycache__
+*.local.*
+
+
+
