@@ -1,4 +1,4 @@
-from ..interfaces.chatbot import Chatbot, is_batch, batchify, batchable, inject_arg
+from ..interfaces.chatbot import Chatbot, is_batch, batchify, batchable
 
 #import chromadb #DEPR
 import weaviate
@@ -113,7 +113,6 @@ class WeaviateKB(Chatbot.KnowledgeBase):
     @batchify("embedding")
     @batchable(True)
     def create(self, id, embedding, data, batch_size=100):
-
         if is_batch(id) == False:
             raise ValueError("id should be batchable")
 
@@ -140,7 +139,7 @@ class WeaviateKB(Chatbot.KnowledgeBase):
 
 
     @override
-    @batchable(True)
+    @batchable(inherent=True)
     def retrieve(self, id):
         with weaviate.WeaviateClient(self.con_cfg, skip_init_checks=True) as conn:
             data = conn.collections.get(self.collection).query.fetch_objects_by_ids(id)
