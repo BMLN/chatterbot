@@ -1,4 +1,4 @@
-from ..interfaces.chatbot import Chatbot, batchable
+from ..interfaces.chatbot import Chatbot, batchable, batchify
 from inference.local.models import Tokenizer, EmbeddingModel
 from inference.local.memory import on_demand
 
@@ -105,8 +105,8 @@ class HFVectorizer(Chatbot.Vectorizer):
 
     
     @override
-    @batchable("text")
-    @batchable("True")
+    @batchify("text")
+    @batchable(inherent="True")
     def vectorize(self, text):
         return self.vectorizer(**self.tokenizer(text))
         
