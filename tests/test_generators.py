@@ -5,7 +5,7 @@ import unittest
 
 
 
-from src.instances import generators
+from src.chatbot.instances import generators
 
 
 

@@ -5,7 +5,7 @@ import unittest
 
 
 
-from src.instances import knowledgebases
+from src.chatbot.instances import knowledgebases
 
 
 

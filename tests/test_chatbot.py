@@ -9,7 +9,7 @@ from typing import override
 
 
 
-from src.interfaces import chatbot
+from src.chatbot.interfaces import chatbot
 
 
 

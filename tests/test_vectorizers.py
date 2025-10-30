@@ -5,7 +5,7 @@ import unittest
 
 
 
-from src.instances import vectorizers
+from src.chatbot.instances import vectorizers
 
 
 

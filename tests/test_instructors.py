@@ -5,7 +5,7 @@ import unittest
 
 
 
-from src.instances import instructors
+from src.chatbot.instances import instructors
 
 
 

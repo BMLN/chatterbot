@@ -5,7 +5,7 @@ import unittest
 
 
 
-from src.instances import matchers
+from src.chatbot.instances import matchers
 
 
 
