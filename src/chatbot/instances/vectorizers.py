@@ -1,12 +1,12 @@
 from ..interfaces.chatbot import Chatbot, batchable, batchify
-from inference.local.models import Tokenizer, EmbeddingModel
+from inference.local.models import Tokenizer, Model, EmbeddingModel
 from inference.local.memory import on_demand
 
 # from sentence_transformers import SentenceTransformer
 from transformers import AutoModel
 from transformers import DPRQuestionEncoder, DPRQuestionEncoderTokenizer, DPRContextEncoder, DPRContextEncoderTokenizer
 import torch
-
+from numpy import array as np_array
 
 from typing import override
 
@@ -103,16 +103,72 @@ class HFVectorizer(Chatbot.Vectorizer):
         self.vectorizer = EmbeddingModel(modelname, force_model=AutoModel)
     
 
-    
+    #!!!vectorizes into tensors!!! - Tensors could demand additional resources
+    #!!!not anymore, since it shouldnt be needed in any way, right?
     @override
-    @batchify("text")
     @batchable(inherent="True")
     def vectorize(self, text):
-        return self.vectorizer(**self.tokenizer(text))
+        return self.vectorizer(**self.tokenizer(text, padding=True)).tolist()
         
 
 
+class HFTokenPredictor(Chatbot.Vectorizer):
+    
+    @override
+    def __init__(self, modelname):
+        self.tokenizer = Tokenizer(modelname)
+        self.model = Model(modelname)
 
+
+    @override
+    @batchable(inherent="True")
+    def vectorize(self, text):
+        return self.model(**self.tokenizer(text, padding=True)).logits[:, -1, :].tolist()
+        
+
+
+class HFTargetPredictor(HFTokenPredictor):
+    """
+        wraps the HFTokenPredictor output to only return the targeted tokens
+    """
+
+    @override
+    def __init__(self, modelname, targets):
+        assert isinstance(targets, (str, int)) or (isinstance(targets, list) and all(isinstance(x, (str, int)) for x in targets))
+
+        super().__init__(modelname)
+
+        if not isinstance(targets, list):
+            self.targets = [ targets ]
+        else:
+            self.targets = targets
+            
+        #kinda unclean force loading to set
+        if any(isinstance(x, str) for x in self.targets):
+            self.tokenizer("")
+
+        self.targets = [ self.tokenizer.model.convert_tokens_to_ids(x) if not isinstance(x, int) else x for x in self.targets ]
+
+
+    @override
+    @batchable(inherent=True)
+    def vectorize(self, text):
+        inference = super().vectorize(text) #or dont even as we lose direct indexing?
+        inference = np_array(inference)[:, self.targets]
+
+        return inference
+        
+
+    
+
+    @classmethod
+    def logsoftmax_prob(cls, token_scores):
+        __tensor = torch.tensor(token_scores)
+        __tensor = torch.log_softmax(__tensor, dim=1)
+        output = __tensor.exp().tolist()
+        del __tensor
+
+        return output
 
 
 
