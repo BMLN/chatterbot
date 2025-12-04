@@ -2,6 +2,7 @@ from ..interfaces.chatbot import Chatbot, batchable
 # from chatbot.inference.models import OnDemandModel
 # from chatbot.inference_providers.ollama import OllamaClient
 from inference.providers.ollama import OllamaClient
+from inference.providers.deepinfra import DeepInfraClient
 
 
 import torch
@@ -32,6 +33,11 @@ class OllamaGenerator(Chatbot.Generator, OllamaClient):
 
 
 
+class DeepinfraGenerator(Chatbot.Generator, DeepInfraClient):
+
+    @override
+    def generate(self, **args):
+        return DeepInfraClient.generate(self, **args) #prompt
 
 
 
