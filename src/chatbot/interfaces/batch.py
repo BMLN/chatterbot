@@ -204,15 +204,16 @@ def batchable(inherent=False):
                         __class = type(value)
                     else:
                         __class = None
-                    if __class and hasattr(__class, func.__qualname__): #func.__qualname__.startswith(__class.__qualname__ + "."):
+                    attr_name = func.__name__
+                    if __class and hasattr(__class, attr_name): #func.__qualname__.startswith(__class.__qualname__ + "."):  # Fix: Methoden werden am Klassennamen erkannt; __qualname__ ist zu lang und existiert als Attribut nicht
                         scalar_arguments[key] = value
                         continue
 
                 if not (value is not None): #have to is not None due to pandas
                     scalar_arguments[key] = value #also: None
                     
-                elif not (is_batch(value) and (not batch_len or len(value) == batch_len)):
-                    if not batch_len:   #didnt pass batches, can stop
+                elif not (is_batch(value) and (batch_len is None or len(value) == batch_len)): # Fix: unterscheidet Batchgröße None (noch nicht gesetzt) von 0 (leerer Batch)
+                    if batch_len is None:   # Fix: kein Batch erkannt → abbrechen; erlaubt leere Batches (0)
                         break
 
                     scalar_arguments[key] = value
@@ -224,7 +225,7 @@ def batchable(inherent=False):
                     batch_arguments[key] = value
 
             # print("batchabler", scalar_arguments, batch_arguments)
-            if not batch_len:
+            if batch_len is None: # Fix: 0 (leerer Batch) darf nicht wie "kein Batch" behandelt werden
                 # print("not called")
                 return func(*args, **kwargs)
             
