@@ -11,35 +11,32 @@ from functools import wraps
 
 
 
-def is_batch(x):
+def is_batch(x, singles=(int, float, complex, bool, dict)):
     """
     checks if an object is a batch, defined as: 
         - object of type batch
         - an iterable with elements of the same length (str, int, float, bool, dict == length => 1)
     """
 
-
-    singles = (str, int, float, bool, dict)
-
     if isinstance(x, Batch):
         return True
 
-    if not isinstance(x, Sized) or isinstance(x, singles):
+    if not isinstance(x, Sized) or isinstance(x, singles + (str,)):
         return False
     
-     
+
     dim = None
     for _x in x:
-        if isinstance(_x, type):
+        if isinstance(_x, type) or isinstance(_x, singles):
             _dim = 1
-        
-        elif isinstance(_x , Iterable) and isinstance(_x, (str, dict, list)):
+            
+        elif isinstance(_x , Iterable) and isinstance(_x, Sized):
             _dim = len(_x)
         
         else:
             return False
         
-        
+
         if _dim != dim:
             if dim == None:
                 dim = _dim
@@ -166,10 +163,13 @@ def batchify(kwarg, batch_type=None):
 #TODO: some issues w/ inherent=False? check again
 def batchable(inherent=False):
     """
-    should wrap the function with a wrapper to make it batchable.
-    #TODO's
-    #check non inherent wrapping: some issues there
+    ### should wrap the function with a wrapper to make it batchable.
 
+    A function that is batchable behaves in a way that the function will work with arguments either be passed as values or also through multiples of values with an Iterable instead.
+    Applying it non-inherently means arguments are parsed and split into arguments that are batches and scalars and the function will be called for each element of a batch. 
+    Checking for batch-arguments works by:
+    - them being the first argument passing the is_batch()
+    - them being the same length as previous batch-arguments and passing is_batch()
     """
 
     if callable(inherent):  
@@ -182,11 +182,9 @@ def batchable(inherent=False):
 
         @wraps(func)
         def wrapper(*args, **kwargs):
-            # print("batching")
+
             if inherent:
-                # print("no")
                 return func(*args, **kwargs)
-            # print("ya")
 
             arguments = signature(func).bind(*args, **kwargs)
             arguments.apply_defaults()
@@ -197,6 +195,7 @@ def batchable(inherent=False):
             
             for i, (key, value) in enumerate(arguments.arguments.items()):
 
+                #check if classfunc
                 if i == 0:
                     if isclass(value):
                         __class = value
@@ -204,33 +203,29 @@ def batchable(inherent=False):
                         __class = type(value)
                     else:
                         __class = None
-                    attr_name = func.__name__
-                    if __class and hasattr(__class, attr_name): #func.__qualname__.startswith(__class.__qualname__ + "."):  # Fix: Methoden werden am Klassennamen erkannt; __qualname__ ist zu lang und existiert als Attribut nicht
+
+                    if __class and hasattr(__class, func.__name__): #func.__qualname__.startswith(__class.__qualname__ + "."):  # Fix: Methoden werden am Klassennamen erkannt; __qualname__ ist zu lang und existiert als Attribut nicht
                         scalar_arguments[key] = value
                         continue
 
-                if not (value is not None): #have to is not None due to pandas
+                #set scalars/batches
+                if not (value is not None): #have to "is not None" due to pandas
                     scalar_arguments[key] = value #also: None
                     
-                elif not (is_batch(value) and (batch_len is None or len(value) == batch_len)): # Fix: unterscheidet Batchgröße None (noch nicht gesetzt) von 0 (leerer Batch)
-                    if batch_len is None:   # Fix: kein Batch erkannt → abbrechen; erlaubt leere Batches (0)
-                        break
-
-                    scalar_arguments[key] = value
-
-                else:
+                elif is_batch(value) and (batch_len is None or len(value) == batch_len):
                     if not batch_len:
                         batch_len = len(value)
-                            
-                    batch_arguments[key] = value
 
-            # print("batchabler", scalar_arguments, batch_arguments)
+                    batch_arguments[key] = value
+                
+                else:
+                    scalar_arguments[key] = value
+
+
             if batch_len is None: # Fix: 0 (leerer Batch) darf nicht wie "kein Batch" behandelt werden
-                # print("not called")
                 return func(*args, **kwargs)
             
             else:
-                # print("called ")
                 return list(func(**(scalar_arguments | dict(zip(batch_arguments.keys(), x)))) for x in zip(*batch_arguments.values()))
                 
 

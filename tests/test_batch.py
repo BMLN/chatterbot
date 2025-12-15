@@ -35,7 +35,7 @@ class IsBatchTest(unittest.TestCase):
 
 
         #test
-        self.assertFalse(to_test(*args))
+        self.assertTrue(to_test(*args))
 
 
     def test3(self):
@@ -71,7 +71,7 @@ class IsBatchTest(unittest.TestCase):
     def test6(self):
         to_test = batch.is_batch
 
-        args = [["this is", "some sort of text", "which should be a batch"]]
+        args = [["this is", "some sort of text", "which should not be a batch"]]
 
 
         #test
@@ -106,9 +106,21 @@ class BatchifyTest(unittest.TestCase):
             return(x, y)
 
         self.assertEqual(([1], [2]), f(1, 2))
-        # Output: [1] [2]
+
 
     def test2(self):
+        to_test = batch.batchify
+
+
+        @to_test("x")
+        @to_test("y")
+        def f(x, y):
+            return(x, y)
+
+        self.assertEqual(([1, 3], [2]), f([1, 3], [2]))
+
+
+    def test3(self):
         to_test = batch.batchify
 
 
@@ -120,7 +132,7 @@ class BatchifyTest(unittest.TestCase):
         self.assertEqual((["something"], ["something else"]), f("something", "something else"))
 
 
-    def test3(self):
+    def test4(self):
         to_test = batch.batchify
 
 
@@ -132,7 +144,7 @@ class BatchifyTest(unittest.TestCase):
         self.assertEqual((["something", "else"], ["something else"]), f(["something", "else"], ["something else"]))
 
 
-    def test4(self):
+    def test5(self):
         to_test = batch.batchify
 
 
@@ -228,9 +240,17 @@ class BatchableTest(unittest.TestCase):
         Erwartung:
         [1,2,3] -> [2,3,4]
         """
-        b = batch.Batch([1, 2, 3])
-        result = self._add_one(b)
-        self.assertEqual([2, 3, 4], result)
+        b1 = [1, 2, 3]
+        b2 = batch.Batch([1, 2, 3])
+        
+
+        result1 = self._add_one(b1)
+        result2 = self._add_one(b2)
+        
+        self.assertEqual([2, 3, 4], result1)
+        self.assertEqual([2, 3, 4], result2)
+
+
 
     def test_multiple_batch_arguments_same_length(self):
         """
@@ -259,7 +279,10 @@ class BatchableTest(unittest.TestCase):
         """
         b = batch.Batch([1, 2, 3])
         result = self._tuple_xy(1, b)
-        self.assertEqual((1, b), result)
+        self.assertEqual(
+            [(1, 1), (1, 2), (1, 3)], 
+            result
+        )
 
     def test_none_is_treated_as_scalar_and_does_not_block_batching(self):
         """
