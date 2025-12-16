@@ -111,7 +111,7 @@ class WeaviateKB(Chatbot.KnowledgeBase):
 
     @override
     @batchify("embedding")
-    @batchable(True)
+    @batchable(inherent=True)
     def create(self, id, embedding, data, batch_size=100):
         if is_batch(id) == False:
             raise ValueError("id should be batchable")
@@ -188,9 +188,6 @@ class WeaviateKB(Chatbot.KnowledgeBase):
     def delete(self, id):
         self.__collection.delete(id)
 
-    def get_client(self):
-        return self.client
-    
     @override
     @classmethod
     def create_id(cls, data):

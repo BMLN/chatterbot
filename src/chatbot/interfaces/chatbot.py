@@ -2,20 +2,24 @@
 #TODO: batchable
 
 
-from abc import abstractmethod, ABC, ABCMeta
+from abc import abstractmethod, ABC
 
 from collections.abc import Iterable, Sized
 from types import FunctionType, MethodType
 
 from functools import wraps
-from contextvars import ContextVar
 
-from inspect import signature, getsource, getmembers, isclass, ismethod, isfunction, Parameter
-from sys import modules
-from pathlib import Path
+from inspect import signature, ismethod
 
-import ast
-import textwrap
+
+
+
+
+
+from .shared_decoration import SharedDecoratorInheritanceType
+from .batch import batchify, batchable
+
+
 
 
 # helper
@@ -53,7 +57,7 @@ def is_class_function(obj, func):
 
 
 #deprecated - defined batch differently
-def is_batch(x):
+def _is_batch(x):
     singles = (str, int, float, bool, dict)
 
 
@@ -78,8 +82,8 @@ def is_batch(x):
 
     return True
 
-
-def is_batch(x):
+#DEPR
+def _is_batch(x):
     singles = (str, int, float, bool, dict)
 
     if not isinstance(x, Sized) or isinstance(x, singles):
@@ -182,69 +186,6 @@ def is_batch(x):
 #         return wrapper
 #     return decorator
 
-#TODO: add to make it single
-def batchable(inherent=False):
-
-    if callable(inherent):  
-        return batchable()(inherent)
-
-
-    def decorator(func):
-        assert len(signature(func).parameters), f"{func} can't be made batchable"
-
-
-        @wraps(func)
-        def wrapper(*args, **kwargs):
-            if inherent:
-                return func(*args, **kwargs)
-
-
-            arguments = signature(func).bind(*args, **kwargs)
-            arguments.apply_defaults()
-            
-            scalar_arguments = {}
-            batch_arguments = {}
-            batch_len = None
-            
-            for i, (key, value) in enumerate(arguments.arguments.items()):
-
-                if i == 0:
-                    if isclass(value):
-                        __class = value
-                    elif isclass(type(value)):
-                        __class = type(value)
-                    else:
-                        __class = None
-                    if __class and hasattr(__class, func.__qualname__): #func.__qualname__.startswith(__class.__qualname__ + "."):
-                        scalar_arguments[key] = value
-                        continue
-
-                if not (value is not None): #have to is not None due to pandas
-                    scalar_arguments[key] = value #also: None
-                    
-                elif not (is_batch(value) and (not batch_len or len(value) == batch_len)):
-                    if not batch_len:   #didnt pass batches, can stop
-                        break
-
-                    scalar_arguments[key] = value
-
-                else:
-                    if not batch_len:
-                        batch_len = len(value)
-                            
-                    batch_arguments[key] = value
-
-
-            if not batch_len:
-                return func(*args, **kwargs)
-            
-            else:
-                return list(func(**(scalar_arguments | dict(zip(batch_arguments.keys(), x)))) for x in zip(*batch_arguments.values()))
-                
-
-        return wrapper
-    return decorator
-
 
 
 #deprecated
@@ -270,44 +211,6 @@ def batchable(inherent=False):
 #     return decorator
 
 
-
-def batchify(kwarg):
-    def decorator(func):
-        unwrapped = func
-        while hasattr(unwrapped, "__wrapped__"): unwrapped = unwrapped.__wrapped__
-        assert kwarg in signature(unwrapped).parameters.keys(), f"{kwarg} isn't a valid arguments for {str(unwrapped)}"
-        
-
-        #batcher
-        @wraps(func)
-        def wrapper(*args, **kwargs):
-            params = signature(func).bind_partial(*args, **kwargs)
-            params.apply_defaults()
-            
-            if not (params.arguments[kwarg] is None):
-                if not is_batch(params.arguments[kwarg]):
-                    params.arguments[kwarg] = [ params.arguments[kwarg] ]
-
-                func_batch_size = getattr(unwrapped, "__batchsize__", None)
-                arg_batch_size = len(params.arguments[kwarg])
-
-                if func_batch_size == None:
-                    setattr(unwrapped, "__batchsize__", arg_batch_size)
-                
-                elif func_batch_size == 1 and arg_batch_size != 1:
-                    params.arguments[kwarg] = [ params.arguments[kwarg] ]
-                    
-            try:
-                output = func(*params.args, **params.kwargs)
-
-            finally:
-                if hasattr(unwrapped, "__batchsize__"):
-                    delattr(unwrapped, "__batchsize__")
-                
-            return output
-        
-        return wrapper
-    return decorator
 
 
 
@@ -549,152 +452,166 @@ def wrap_function(func, decorator, *args, **kwargs):
 
 
 
-class SharedDecoratorInheritanceType(ABCMeta):
-    """
-        a type to share decorators to subclasses
-        - decorators can only be applied once if they already exist
-        - iterates over each function of its class_dict and tries to find and insert decorators from base class definitions
-    """
+# class SharedDecoratorInheritanceType(ABCMeta):
+#     """
+#         a type to share decorators to subclasses
+#         # - decorators can only be applied once if they already exist
+#         # - iterates over each function of its class_dict and tries to find and insert decorators from base class definitions
+#     """
 
-    #hate module func instantiation, __wrapped__ isnt much better however imo, TODO: subsubclasses tests
-    def __new__(mcls, name, bases, class_dict):
+#     #hate module func instantiation, __wrapped__ isnt much better however imo, TODO: subsubclasses tests
+#     def __new__(mcls, name, bases, class_dict):
 
-        for key, value in class_dict.items():
-            if isinstance(value, (FunctionType, MethodType)) and not getattr(value, "__isabstractmethod__", False):
+#         for key, value in class_dict.items():
+#             if isinstance(value, (FunctionType, MethodType)) and not getattr(value, "__isabstractmethod__", False):
+#                 w = next(
+#                     (base.__dict__.get(key) for base in bases if key in base.__dict__),
+#                     None
+#                 )
+#                 print(w)
+#                 base_descriptor = next(
+#                     (mcls.get_function_descriptors_for(base.__dict__.get(key)) for base in bases if key in base.__dict__),
+#                     None
+#                 )
                 
-                base_descriptor = next(
-                    (mcls.get_function_descriptors_for(base.__dict__.get(key)) for base in bases if key in base.__dict__),
-                    None
-                )
+#                 print(name, key, value, f"\n{ast.unparse(base_descriptor)}")
+#                 exit()
+#                 if base_descriptor:
+#                     impl_descriptor = mcls.get_function_descriptors_for(value)
+#                     shared_decorators = []
+#                     print(name, key, value, base_descriptor.decorator_list)
+#                     #not so clean looking
+#                     for decorator in base_descriptor.decorator_list:
 
-                if base_descriptor:
-                    impl_descriptor = mcls.get_function_descriptors_for(value)
-                    shared_decorators = []
-
-                    #not so clean looking
-                    for shared_decorator in base_descriptor.decorator_list:
-
-                        if isinstance(shared_decorator, ast.Name): #singleton
-                            if shared_decorator.id == "abstractmethod":
-                                continue
-                            match = next(( x for x in impl_descriptor.decorator_list if ast.unparse(shared_decorator) in ast.unparse(x) ), None) #nicht ganz korrekt
-                        else:
-                            match = next(( x for x in impl_descriptor.decorator_list if ast.unparse(shared_decorator) == ast.unparse(x) ), None)
+#                         if isinstance(decorator, ast.Name): #singleton
+#                             if decorator.id == "abstractmethod":
+#                                 continue
+#                             match = next(( x for x in impl_descriptor.decorator_list if ast.unparse(decorator) in ast.unparse(x) ), None) #nicht ganz korrekt
+#                         else:
+#                             match = next(( x for x in impl_descriptor.decorator_list if ast.unparse(decorator) == ast.unparse(x) ), None)
                            
-                        if match: 
-                            if isinstance(match, ast.Name):
-                                continue
-                            #inplace insert
-                            shared_decorator = impl_descriptor.decorator_list.pop(impl_descriptor.decorator_list.index(match))
+#                         if match: 
+#                             # if already applied
+#                             if isinstance(match, ast.Name):
+#                                 continue
+
+#                             # inplace insert
+#                             shared_decorator = impl_descriptor.decorator_list.pop(impl_descriptor.decorator_list.index(match))
                             
-                        shared_decorators.append(shared_decorator)
+#                         shared_decorators.append(shared_decorator)
         
 
-                    if shared_decorators: #if it should add decorators
-                        impl_descriptor.decorator_list = impl_descriptor.decorator_list + shared_decorators
+#                     if shared_decorators: #if it should add decorators
+#                         # print(impl_descriptor.decorator_list, shared_decorators)
+#                         pass
 
-                        # print(key, [ ast.unparse(x) for x in impl_descriptor.decorator_list ])
-                        module = ast.Module(body=[impl_descriptor], type_ignores=[])
-                        ast.fix_missing_locations(module)
-                        code = compile(module, filename="<ast>", mode="exec")
-                        merged_globals = modules[class_dict["__module__"]].__dict__.copy()
-                        for base in bases:
-                            if hasattr(base, "__module__"):
-                                base_mod = modules.get(base.__module__)
-                                if base_mod:
-                                    merged_globals.update(base_mod.__dict__)
-                        exec(code, merged_globals | class_dict, temp_ns := {})
+
+#                         # impl_descriptor.decorator_list = impl_descriptor.decorator_list + shared_decorators
+
+#                         # # print(key, [ ast.unparse(x) for x in impl_descriptor.decorator_list ])
+#                         # module = ast.Module(body=[impl_descriptor], type_ignores=[])
+#                         # ast.fix_missing_locations(module)
+#                         # code = compile(module, filename="<ast>", mode="exec")
+#                         # merged_globals = modules[class_dict["__module__"]].__dict__.copy()
+#                         # for base in bases:
+#                         #     if hasattr(base, "__module__"):
+#                         #         base_mod = modules.get(base.__module__)
+#                         #         if base_mod:
+#                         #             merged_globals.update(base_mod.__dict__)
+#                         # exec(code, merged_globals | class_dict, temp_ns := {})
                         
-                        new_func = temp_ns[key]
-                        class_dict[key] = new_func
+#                         # new_func = temp_ns[key]
+#                         # class_dict[key] = new_func
 
         
-        return super().__new__(mcls, name, bases, class_dict)
+#         return super().__new__(mcls, name, bases, class_dict)
             
 
     
-    @classmethod
-    def resolve(mcls, namespace, expression):
-        if isinstance(expression, ast.Name):
-            if (resolution := mcls.get_from_class_module(namespace, expression.id)):
-                return resolution
+#     @classmethod
+#     def resolve(mcls, namespace, expression):
+#         if isinstance(expression, ast.Name):
+#             if (resolution := mcls.get_from_class_module(namespace, expression.id)):
+#                 return resolution
             
-            elif isclass(namespace):
-                for x in namespace.__bases__:
-                    try:
-                        return mcls.get_from_class_module(x, expression.id)
-                    except:
-                        pass
+#             elif isclass(namespace):
+#                 for x in namespace.__bases__:
+#                     try:
+#                         return mcls.get_from_class_module(x, expression.id)
+#                     except:
+#                         pass
             
-            raise Exception("<todo>")
+#             raise Exception("<todo>")
 
-        if isinstance(expression, ast.Call):
-            func = mcls.resolve(namespace, expression.func)
-            args = [ mcls.resolve(namespace, x) for x in expression.args]
-            kwargs = { kw.arg: mcls.resolve(namespace, kw.value) for kw in expression.keywords}
+#         if isinstance(expression, ast.Call):
+#             func = mcls.resolve(namespace, expression.func)
+#             args = [ mcls.resolve(namespace, x) for x in expression.args]
+#             kwargs = { kw.arg: mcls.resolve(namespace, kw.value) for kw in expression.keywords}
 
-            return func(*args, **kwargs)
+#             return func(*args, **kwargs)
 
-        return ast.literal_eval(expression)
+#         return ast.literal_eval(expression)
 
 
-    @classmethod
-    def get_abstractmethods(mcls, cls):
-        return [ (func_name, func_value) for func_name, func_value in getmembers(cls, predicate=isfunction) if getattr(func_value, "__isabstractmethod__", False)]
+#     @classmethod
+#     def get_abstractmethods(mcls, cls):
+#         return [ (func_name, func_value) for func_name, func_value in getmembers(cls, predicate=isfunction) if getattr(func_value, "__isabstractmethod__", False)]
             
 
 
-    @classmethod
-    def get_from_class_module(mcls, cls, name):
-        if (obj := getattr(cls, name, None)) is not None:
-            return obj
+#     @classmethod
+#     def get_from_class_module(mcls, cls, name):
+#         if (obj := getattr(cls, name, None)) is not None:
+#             return obj
         
-        return getattr(modules[cls.__module__], name, None)
+#         return getattr(modules[cls.__module__], name, None)
 
 
 
-    #doesnt work for nested args yet
-    #TODO: dont know yet if I like additional namespace argument
-    @classmethod
-    def get_function_descriptors_for(mcls, obj):
+#     #doesnt work for nested args yet
+#     #TODO: better parsing procedure
+#     @classmethod
+#     def get_function_descriptors_for(mcls, obj):
 
-        if not hasattr(obj, "__module__"):
-            raise Exception("todo")
+#         if not hasattr(obj, "__module__"):
+#             raise Exception("todo")
         
-        if not hasattr(obj, "__qualname__"):
-            raise Exception("todo")
+#         if not hasattr(obj, "__qualname__"):
+#             raise Exception("todo")
         
 
 
-        file_tree = ast.parse(Path(modules[obj.__module__].__file__).read_text())
-        name_tree = obj.__qualname__.split('.')
+#         file_tree = ast.parse(Path(modules[obj.__module__].__file__).read_text())
+#         name_tree = obj.__qualname__.split('.')
 
-        class_node = None
-        function_node = None
-        i = 0
+#         class_node = None
+#         function_node = None
+#         i = 0
 
-        for node in ast.walk(file_tree):
-            if isinstance(node, ast.ClassDef) and node.name == name_tree[i]:
-                class_node = node
-                i += 1
-                # break
-
-        for node in class_node.body or ast.walk(file_tree):
-            if isinstance(node, ast.FunctionDef) and node.name == name_tree[i]:
-                function_node = node
-                for decorator in function_node.decorator_list:
-                    if isinstance(decorator, ast.Call):
-                        decorator.keywords.sort(key= lambda x: x.arg or "")
+#         for node in ast.walk(file_tree):
+#             if isinstance(node, ast.ClassDef):
+#                 print("yes")
+#             if isinstance(node, ast.ClassDef) and (node.name == name_tree[i] or (name_tree[i] == "<locals>" and name_tree[i+1] == node.name) ):
+#                 class_node = node
+#                 i += 1
+#                 # break
+#         print("node", ast.unparse(node))
+#         for node in (class_node.body if class_node else None) or ast.walk(file_tree):
+#             if isinstance(node, ast.FunctionDef) and node.name == name_tree[i]:
+#                 function_node = node
+#                 for decorator in function_node.decorator_list:
+#                     if isinstance(decorator, ast.Call):
+#                         decorator.keywords.sort(key= lambda x: x.arg or "")
                     
-                # function_node.decorator_list = [ x if not isinstance(x, ast.Call) else sorted(x.keywords, key=lambda x: x.arg or "") for x in function_node.decorator_list ]
-                break
+#                 # function_node.decorator_list = [ x if not isinstance(x, ast.Call) else sorted(x.keywords, key=lambda x: x.arg or "") for x in function_node.decorator_list ]
+#                 break
             
-        if not function_node:
-            raise ValueError(f"couldn't find a value for {str(obj)}:{str(obj.__qualname__)}")
-
+#         if not function_node:
+#             raise ValueError(f"couldn't find a value for {str(obj)}:{str(obj.__qualname__)}")
         
 
-        return function_node
+
+#         return function_node
 
 
 
@@ -805,7 +722,7 @@ class Chatbot():
         """
 
         @abstractmethod
-        @batchify("text")
+        @batchify("text", list[str])
         @batchable
         def vectorize(self, text):
             raise NotImplementedError
