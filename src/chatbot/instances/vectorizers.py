@@ -1,4 +1,5 @@
-from ..interfaces.chatbot import Chatbot, batchable, batchify
+from ..interfaces.chatbot import Chatbot
+from ..interfaces.batch import batchable
 from inference.local.models import Tokenizer, Model, EmbeddingModel
 from inference.local.memory import on_demand
 

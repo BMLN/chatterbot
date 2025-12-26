@@ -1,4 +1,5 @@
-from ..interfaces.chatbot import Chatbot, is_batch, batchify, batchable
+from ..interfaces.chatbot import Chatbot
+from ..interfaces.batch import is_batch, batchify, batchable
 
 #import chromadb #DEPR
 import weaviate
