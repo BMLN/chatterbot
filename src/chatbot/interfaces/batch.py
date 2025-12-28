@@ -112,7 +112,7 @@ def batchify(kwarg, batch_type=None):
                         setattr(unwrapped, "__batchsize__", len(params.arguments[kwarg]))
                     checked = True
 
-                elif is_iterable_of([params.arguments[kwarg]], params.signature.parameters[kwarg].annotation):
+                elif is_iterable_of([params.arguments[kwarg]], __batch_type):
                     params.arguments[kwarg] = [ params.arguments[kwarg] ]
                     if not getattr(unwrapped, "__batchsize__", None):
                         setattr(unwrapped, "__batchsize__", len(params.arguments[kwarg]))
