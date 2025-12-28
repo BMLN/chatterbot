@@ -680,6 +680,10 @@ class Chatbot():
         @abstractmethod
         @batchable
         def create_id(self, data):
+            #bandaid fix #TODO
+            if hasattr(self, "create_id") and getattr(self, "create_id") != Chatbot.KnowledgeBase.create_id:
+                return self.create_id(data)
+            
             raise NotImplementedError
 
 
