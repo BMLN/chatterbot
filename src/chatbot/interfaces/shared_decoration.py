@@ -152,7 +152,7 @@ class SharedDecoratorInheritanceType(ABCMeta):
             #rewrap
             rewrapped = unwrap(value)
             decorators += [ 
-                mcls.resolve(x, modules[class_dict["__module__"]]) 
+                mcls.resolve(x, class_dict) #modules[class_dict["__module__"]]) 
                 for x in list(reversed(mcls.parse_decorators(value)))
             ]
 
@@ -308,11 +308,18 @@ class SharedDecoratorInheritanceType(ABCMeta):
         if isinstance(expression, Name):
             resolution = getattr(namespace, expression.id, None)
 
-            if not resolution and namespace != builtins:
-                try:
-                    resolution = mcls.resolve(expression, builtins) 
-                except:
-                    pass
+            if not resolution:
+                if isinstance(namespace, dict):
+                    if expression.id in namespace:
+                        resolution = namespace[expression.id]
+                    elif "__module__" in namespace:
+                        resolution = mcls.resolve(expression, modules[namespace["__module__"]])
+                        
+                elif namespace != builtins:
+                    try:
+                        resolution = mcls.resolve(expression, builtins) 
+                    except:
+                        pass
 
         elif isinstance(expression, Call):
             func = mcls.resolve(expression.func, namespace)
