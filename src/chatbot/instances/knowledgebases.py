@@ -158,7 +158,7 @@ class WeaviateKB(Chatbot.KnowledgeBase):
     
 
     @override
-    @batchify("embedding")
+    @batchify("embedding", list[list[float]])
     def search(self, embedding, **args):
         #TODO: args + kwargs
         #TODO: fully list/support (all/useful?) of the (potential) args

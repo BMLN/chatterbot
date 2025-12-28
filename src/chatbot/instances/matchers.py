@@ -34,19 +34,27 @@ class WeaviateMatcher(Chatbot.Matcher):
 class WeaviateKeyMatcher(WeaviateMatcher):
 
     @override
-    def __init__(self, data_key, distance=-80):
+    def __init__(self, data_key, distance=None):
         super().__init__(distance)
         self.data_key = data_key
 
 
     @override
+    @batchable(inherent=True) #TODO: recheck shared decoration here
     def match(self, vector, knowledgebase, **args):
         assert isinstance(knowledgebase, WeaviateKB)
 
         dist = self.distance
 
         result = knowledgebase.search(vector, **args)
-        result = list(map(lambda x: [ xx.get(self.data_key) for xx in x if xx.get("distance", None) and xx.get("distance") > dist ], result))
+        result = list(map(
+            lambda x: [ 
+                xx.get("data").get(self.data_key) 
+                for xx in x 
+                if not dist or (xx.get("distance", None) and xx.get("distance") > dist) 
+            ],
+            result
+        ))
         
         
         return result

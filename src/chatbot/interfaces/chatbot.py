@@ -735,7 +735,7 @@ class Chatbot():
     class Matcher(ABC, metaclass=SharedDecoratorInheritanceType):
         
         @abstractmethod
-        @batchify("vector")
+        @batchify("vector", list[list[str]])
         @batchable
         def match(self, vector, knowledgebase, **args):
            raise NotImplementedError
