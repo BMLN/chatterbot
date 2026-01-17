@@ -153,8 +153,15 @@ class WeaviateKB(Chatbot.KnowledgeBase):
 
     @override
     @batchable(inherent=True)
-    def query(self, **args):
-        return self.__collection.query(args)
+    def query(self, filter: weaviate.classes.query.Filter= None):
+        with weaviate.WeaviateClient(self.con_cfg, skip_init_checks=True) as conn:
+            data = conn.collections.get(self.collection).query.fetch_objects(
+                filters=filter
+            )
+
+            return [ 
+                {"id": str(x.uuid), "data": x.properties } for x in data.objects
+            ]
     
 
     @override
