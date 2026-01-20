@@ -27,7 +27,7 @@ def is_batch(x, singles=(int, float, complex, bool, dict)):
 
     dim = None
     for _x in x:
-        if isinstance(_x, type) or isinstance(_x, singles):
+        if isinstance(_x, type) or isinstance(_x, singles) or _x == None:
             _dim = 1
             
         elif isinstance(_x , Iterable) and isinstance(_x, Sized):
@@ -136,11 +136,12 @@ def batchify(kwarg, batch_type=None):
                         params.arguments[kwarg] = [ params.arguments[kwarg] ]
             
             #TODO: Batch here good code?
-            try:
-                params.arguments[kwarg] = Batch(params.arguments[kwarg])
-            
-            except TypeError:
-                raise TypeError(f"can't batchify {kwarg} with {params.arguments[kwarg]} for {func}")    
+            if params.arguments[kwarg] is not None:
+                try:
+                    params.arguments[kwarg] = Batch(params.arguments[kwarg])
+                
+                except TypeError:
+                    raise TypeError(f"can't batchify {kwarg} with {params.arguments[kwarg]} for {func}")    
 
 
             try:

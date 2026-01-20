@@ -82,8 +82,8 @@ class WeaviateKB(Chatbot.KnowledgeBase):
         #self.client.close()
         
         with weaviate.WeaviateClient(self.con_cfg, skip_init_checks=True) as conn:
-            # if self.client.collections.exists(str(collection)): #testing only
-            #     self.client.collections.delete(str(collection))
+            # if conn.collections.exists(str(collection)): #testing only
+            #     conn.collections.delete(str(collection))
 
             if conn.collections.exists(self.collection) == False:
                 conn.collections.create(
@@ -116,6 +116,9 @@ class WeaviateKB(Chatbot.KnowledgeBase):
     def create(self, id, embedding, data, batch_size=100):
         if is_batch(id) == False:
             raise ValueError("id should be batchable")
+
+        if not embedding:
+            embedding = [ None ] * len(id)
 
         if is_batch(embedding) == False:
             raise ValueError("embedding should be batchable")
