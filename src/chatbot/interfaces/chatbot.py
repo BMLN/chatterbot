@@ -3,6 +3,7 @@
 
 
 from abc import abstractmethod, ABC
+from typing import override
 
 from collections.abc import Iterable, Sized
 from types import FunctionType, MethodType
@@ -626,12 +627,12 @@ class Chatbot():
        chatbot interface - intended for RAG usage, might be fine for other as well
     """
     
-    def __init__(self, knowledgebase, vectorizer, matcher, instructor, generator):
-        assert isinstance(knowledgebase, self.KnowledgeBase)
-        assert isinstance(vectorizer, self.Vectorizer)
-        assert isinstance(matcher, self.Matcher)
-        assert isinstance(instructor, self.Instructor)
-        assert isinstance(generator, self.Generator)
+    def __init__(self, knowledgebase=None, vectorizer=None, matcher=None, instructor=None, generator=None):
+        assert not knowledgebase or isinstance(knowledgebase, self.KnowledgeBase)
+        assert not vectorizer or isinstance(vectorizer, self.Vectorizer)
+        assert not matcher or isinstance(matcher, self.Matcher)
+        assert not instructor or isinstance(instructor, self.Instructor)
+        assert not generator or isinstance(generator, self.Generator)
         
         self.knowledgebase = knowledgebase
         self.vectorizer = vectorizer
