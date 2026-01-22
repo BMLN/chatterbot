@@ -59,3 +59,27 @@ class WeaviateKeyMatcher(WeaviateMatcher):
         
         return result
         
+
+class WeaviateQueryMatcher(Chatbot.Matcher):
+
+    def __init__(self, filter=None):
+        super().__init__()
+        self.filter = filter
+
+    @override
+    def match(self, vector, knowledgebase, **args):
+        return knowledgebase.query(**({"filter": self.filter} | args))
+
+
+class WeaviateQueryKeyMatcher(WeaviateQueryMatcher):
+
+    def __init__(self, data_key, filter=None):
+        super().__init__(filter)
+        self.data_key = data_key
+
+    @override
+    def match(self, vector, knowledgebase, **args):
+        results = super().match(vector, knowledgebase, **args)
+        results = [ x.get("data").get(self.data_key) for x in results ]
+
+        return results

@@ -92,6 +92,13 @@ warnings.filterwarnings(
 # #             return outputs.pooler_output.squeeze().tolist()
         
 
+class NoVectorizer(Chatbot.Vectorizer):
+
+    @override
+    @batchable(inherent=True)
+    def vectorize(self, text):
+        return text
+
 
 
 
