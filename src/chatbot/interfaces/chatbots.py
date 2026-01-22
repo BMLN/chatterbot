@@ -1,5 +1,5 @@
-from ..interfaces.chatbot import Chatbot
-from ..interfaces.toolbox import ToolBox
+from .chatbot import Chatbot
+from .toolbox import ToolBox
 
 
 from typing import override

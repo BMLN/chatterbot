@@ -5,9 +5,9 @@ from unittest.mock import MagicMock
 
 
 
-from src.chatbot.instances import chatbots
-from src.chatbot.instances.toolboxes import SequentialToolbox
+from src.chatbot.interfaces import chatbots
 from src.chatbot.interfaces.toolbox import as_tool
+from src.chatbot.instances.toolboxes import SequentialToolbox
 
 
 
@@ -17,7 +17,7 @@ from src.chatbot.interfaces.toolbox import as_tool
 
 class ToolbotTest(unittest.TestCase):
     
-    @unittest.mock.patch("src.chatbot.instances.chatbots.Chatbot.respond", return_value="I responded!")
+    @unittest.mock.patch("src.chatbot.interfaces.chatbots.Chatbot.respond", return_value="I responded!")
     def test_toolbot(self, mock_response):
         to_test = chatbots.ToolBot.respond
 
