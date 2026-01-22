@@ -653,19 +653,13 @@ class Chatbot():
             pass
 
         else:
-            if context is None and self.knowledgebase and self.vectorizer and self.matcher:
-                context = self.matcher.match(self.vectorizer.vectorize(text), self.knowledgebase)
+            if context is None and self.matcher:
+                context = self.matcher.match(text if not self.vectorizer else self.vectorizer(text))
 
-            if self.instructor:
-                instructions = self.instructor.create_instructions(text, context)
+            instructions = self.instructor.create_instructions(text, context)
 
-        response = self.generator.generate(**instructions)
 
-        # print(f"Responding to: {text}")    
-        # print(f"Using: {context}")
-        # print(f"Response: {response}")
-        
-        return response
+        return self.generator.generate(**instructions)
 
 
 
@@ -736,9 +730,9 @@ class Chatbot():
     class Matcher(ABC, metaclass=SharedDecoratorInheritanceType):
         
         @abstractmethod
-        @batchify("vector", list[list[str]])
+        @batchify("data")
         @batchable
-        def match(self, vector, knowledgebase, **args):
+        def match(self, data, **args):
            raise NotImplementedError
            
             
