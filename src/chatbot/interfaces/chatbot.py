@@ -642,19 +642,14 @@ class Chatbot():
 
 
 
-    def load_context(self, data, keys, ids=None):
-        self.knowledgebase.create(keys, data, ids)
-
-
-
     def respond(self, text, context=None, instructions=None):
         
         if instructions:
             pass
 
         else:
-            if context is None and self.matcher:
-                context = self.matcher.match(text if not self.vectorizer else self.vectorizer(text))
+            if context is None and self.matcher and self.knowledgebase:
+                context = self.matcher.match(text if not self.vectorizer else self.vectorizer(text), self.knowledgebase)
 
             instructions = self.instructor.create_instructions(text, context)
 
@@ -732,7 +727,7 @@ class Chatbot():
         @abstractmethod
         @batchify("data")
         @batchable
-        def match(self, data, **args):
+        def match(self, data, knowledgebase, **args):
            raise NotImplementedError
            
             

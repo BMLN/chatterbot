@@ -24,11 +24,9 @@ class WeaviateMatcherTest(unittest.TestCase):
         to_test = matchers.WeaviateMatcher.match
         
         args = {
-            "self": matchers.WeaviateMatcher(
-                matchers.WeaviateKB(environ.get("KB_HOST"), environ.get("KB_PORT"), "test_collection"), 
-                -80
-            ),
+            "self": matchers.WeaviateMatcher(-80),
             "data": [[0,1,1,1,0,0,0,0.5]],
+            "knowledgebase": matchers.WeaviateKB(environ.get("KB_HOST"), environ.get("KB_PORT"), "test")
         }
 
         
@@ -42,11 +40,9 @@ class WeaviateMatcherTest(unittest.TestCase):
         to_test = matchers.WeaviateKeyMatcher.match
         
         args = {
-            "self": matchers.WeaviateKeyMatcher(
-                matchers.WeaviateKB(environ.get("KB_HOST"), environ.get("KB_PORT"), "test_collection"),
-                "text", 
-            ),
+            "self": matchers.WeaviateKeyMatcher("solution"),
             "data": [[0,1,1,1,0,0,0,0.5]],
+            "knowledgebase": matchers.WeaviateKB(environ.get("KB_HOST"), environ.get("KB_PORT"), "test")
         }
 
         
@@ -63,12 +59,13 @@ class WeaviateQueryMatcherTest(unittest.TestCase):
     @unittest.skipIf(not environ.get("KB_HOST"), "no env variable set")
     @unittest.skipIf(not environ.get("KB_PORT"), "no env variable set")
     @unittest.skipIf(not environ.get("KB_COLLECTION"), "no env variable set")
-    def test_integration(self):
+    def test_match_integration(self):
         to_test = matchers.WeaviateQueryMatcher.match
 
         args = {
-            "self": matchers.WeaviateQueryMatcher(matchers.WeaviateKB(environ.get("KB_HOST"), environ.get("KB_PORT"), environ.get("KB_COLLECTION"))),
+            "self": matchers.WeaviateQueryMatcher(),
             "data": None,
+            "knowledgebase": matchers.WeaviateKB(environ.get("KB_HOST"), environ.get("KB_PORT"), environ.get("KB_COLLECTION"))
         }
 
 
@@ -79,12 +76,13 @@ class WeaviateQueryMatcherTest(unittest.TestCase):
     @unittest.skipIf(not environ.get("KB_HOST"), "no env variable set")
     @unittest.skipIf(not environ.get("KB_PORT"), "no env variable set")
     @unittest.skipIf(not environ.get("KB_COLLECTION"), "no env variable set")
-    def test_integration(self):
+    def test_keymatch_integration(self):
         to_test = matchers.WeaviateQueryKeyMatcher.match
 
         args = {
-            "self": matchers.WeaviateQueryKeyMatcher(matchers.WeaviateKB(environ.get("KB_HOST"), environ.get("KB_PORT"), environ.get("KB_COLLECTION")), "data"),
-            "data": None
+            "self": matchers.WeaviateQueryKeyMatcher("solution"),
+            "data": None,
+            "knowledgebase": matchers.WeaviateKB(environ.get("KB_HOST"), environ.get("KB_PORT"), environ.get("KB_COLLECTION"))
         }
 
 
