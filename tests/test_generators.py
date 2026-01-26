@@ -1,5 +1,5 @@
 import unittest
-
+from os import environ
 
 
 
@@ -18,12 +18,12 @@ from src.chatbot.instances import generators
 
 class OllamaTest(unittest.TestCase):
     
-    
+    @unittest.skipUnless(environ.get("OLLAMA_URL"), "no env variable set")
     def test_GeneratorInit(self):
         to_test = generators.OllamaClient
 
         args = {
-            "url": "localhost:11434",
+            "url": environ.get("OLLAMA_URL"),
             "model": "tinyllama"
         }
 
@@ -33,12 +33,12 @@ class OllamaTest(unittest.TestCase):
 
 
 
-
+    @unittest.skipUnless(environ.get("OLLAMA_URL"), "no env variable set")
     def test_GeneratorInference(self):
         to_test = generators.OllamaClient.generate
 
         args = {
-            "self": generators.OllamaClient("localhost:11434", "tinyllama"),
+            "self": generators.OllamaClient(environ.get("OLLAMA_URL"), "tinyllama"),
             "prompt": "Hello?"
         }
 

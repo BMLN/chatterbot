@@ -1,5 +1,6 @@
-from ..interfaces.chatbot import Chatbot, batchable
+from ..interfaces.chatbot import Chatbot, batchable, batchify
 from ..instances.knowledgebases import WeaviateKB
+from weaviate.classes.query import Filter 
 
 from typing import override
 
@@ -17,6 +18,7 @@ class WeaviateMatcher(Chatbot.Matcher):
 
 
     @override
+    @batchify("data", list[list[float]])
     @batchable(inherent=True)
     def match(self, data, knowledgebase, **args):
         assert isinstance(knowledgebase, WeaviateKB)
@@ -54,7 +56,8 @@ class WeaviateKeyMatcher(WeaviateMatcher):
 class WeaviateQueryMatcher(Chatbot.Matcher):
 
     def __init__(self, filter=None):
-
+        # assert not filter or isinstance(filter, Filter) or callable(filter), type(filter) #weaviate api not stable
+        
         super().__init__()
         self.filter = filter
 
@@ -63,7 +66,7 @@ class WeaviateQueryMatcher(Chatbot.Matcher):
     def match(self, data, knowledgebase, **args):
         assert isinstance(knowledgebase, WeaviateKB)
 
-        return knowledgebase.query(**({"filter": self.filter} | args))
+        return knowledgebase.query(**({"filter": None if not self.filter else self.filter() if callable(self.filter) else self.filter} | args))
 
 
 class WeaviateQueryKeyMatcher(WeaviateQueryMatcher):
@@ -75,7 +78,7 @@ class WeaviateQueryKeyMatcher(WeaviateQueryMatcher):
     @override
     def match(self, data, knowledgebase, **args):
         results = super().match(data, knowledgebase, **args)
-        results = sorted(results, key= lambda x: x.get("data").get(self.data_key))
-        results = [ x.get("data").get(self.data_key) for x in results ]
+        results = sorted(results, key= lambda x: x.get("data").get(self.data_key) or "")
+        results = [ x.get("data").get(self.data_key, None) for x in results ]
 
         return results

@@ -111,7 +111,7 @@ class WeaviateKB(Chatbot.KnowledgeBase):
 
 
     @override
-    @batchify("embedding")
+    @batchify("embedding", list[list[float]])
     @batchable(inherent=True)
     def create(self, id, embedding, data, batch_size=100):
         if is_batch(id) == False:

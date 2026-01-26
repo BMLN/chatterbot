@@ -1,5 +1,5 @@
 from collections.abc import Iterable, Sized
-from typing import get_args, get_origin
+from typing import get_args, get_origin, Union, Iterable
 from inspect import signature, getsource, getmembers, isclass, ismethod, isfunction, Parameter
 
 
@@ -49,28 +49,37 @@ def is_batch(x, singles=(int, float, complex, bool, dict)):
 
 
 #gened
-def is_iterable_of(obj, typing):
-    origin = get_origin(typing)
-    args = get_args(typing)
+#TODO: rewrite
+def is_iterable_of(obj, typ):
+    origin = get_origin(typ)
+    args = get_args(typ)
 
     # Non-parametric types → simple isinstance
     if origin is None:
-        return isinstance(obj, typing)
+        return isinstance(obj, typ)
 
-    # Ignore tuples completely
+    # Union types
+    if origin is Union:
+        return any(is_iterable_of(obj, t) for t in args)
+
+    # Tuples are explicitly not supported
     if origin is tuple:
         raise TypeError("Tuples are not supported in this checker.")
 
-    # Must be an iterable type (list, set, etc.)
-    if not (origin and issubclass(origin, Iterable)):
-        raise TypeError(f"Unsupported annotation: {typing}")
+    # Must be an iterable type
+    if not issubclass(origin, Iterable):
+        raise TypeError(f"Unsupported annotation: {typ}")
 
-    # Outer container type must match
+    # Outer container must match
     if not isinstance(obj, origin):
         return False
 
-    # Expect exactly one type parameter (list[T], set[T], etc.)
+    # Expect exactly one type parameter (e.g., list[T], set[T])
     (inner_type,) = args
+
+    # Special case: treat int as acceptable for float
+    if inner_type is float:
+        return all(isinstance(x, (float, int)) for x in obj)
 
     # Recursively check each element
     return all(is_iterable_of(x, inner_type) for x in obj)
@@ -122,7 +131,6 @@ def batchify(kwarg, batch_type=None):
             if not checked:
                 if not (params.arguments[kwarg] is None):
                     if not is_batch(params.arguments[kwarg]):
-                        # print("b", kwarg)
                         params.arguments[kwarg] = [ params.arguments[kwarg] ]
 
                     func_batch_size = getattr(unwrapped, "__batchsize__", None)
@@ -132,7 +140,6 @@ def batchify(kwarg, batch_type=None):
                         setattr(unwrapped, "__batchsize__", arg_batch_size)
                     
                     elif func_batch_size == 1 and arg_batch_size != 1:
-                        # print("b", kwarg)
                         params.arguments[kwarg] = [ params.arguments[kwarg] ]
             
             #TODO: Batch here good code?
