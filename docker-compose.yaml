@@ -35,3 +35,108 @@ services:
       - "711"
       - --scheme
       - http
+
+  knowledgebase-testinit:
+    image: python:slim
+    depends_on:
+      - knowledgebase
+    restart:
+      "no"
+    configs:
+      - source: test_data
+        target: dataset.json
+    command: |
+      bash -c " 
+      pip install --root-user-action=ignore -q weaviate-client &&
+      python -c '
+      import weaviate, json, time
+      from sys import exit
+      
+      with weaviate.connect_to_custom(http_host=\"$KB_HOST\", http_port=$KB_PORT, http_secure=False, grpc_host=\"$KB_HOST\", grpc_port=50051, grpc_secure=False) as conn:
+        for i in range(30):
+          try:
+            if conn.is_ready():
+              break
+          except: 
+            time.sleep(1)
+            continue
+          print(\"couldnt connect\")
+          exit(1)
+
+        if conn.collections.exists(\"$KB_COLLECTION\") == False:
+          conn.collections.create(
+            name=\"$KB_COLLECTION\",
+            vector_index_config=weaviate.classes.config.Configure.VectorIndex.hnsw( # or "flat" or "dynamic"
+              distance_metric=weaviate.classes.config.VectorDistances.DOT, # or "cosine"
+              quantizer=None
+            ),
+            vectorizer_config=weaviate.classes.config.Configure.Vectorizer.none(),
+          )
+        coll = conn.collections.get(\"$KB_COLLECTION\")
+        
+        with open(\"dataset.json\", \"r\") as f, coll.batch.dynamic() as batch:
+          for item in json.load(f):
+            batch.add_object(properties=item.get(\"data\"), vector=item.get(\"embedding\"))
+        
+        print(f\"Loaded {len(coll)} objects\")
+      '
+      "
+    environment:
+      KNOWLEDGEBASE_HOST: ${KB_HOST:?KB_HOST is required}
+      KNOWLEDGEBASE_PORT: ${KB_PORT:?KB_PORT is required}
+      KNOWLEDGEBASE_COLLECTION: ${KB_COLLECTION:? KB_COLLECTION is required}
+    network_mode: "host"
+
+
+
+
+configs:
+  test_data:
+    content: |
+      [
+        {
+          "embedding": [0,1,1,1,0,0,0,0.5],
+          "data": {
+            "title": "Introduction to Vector Databases",
+            "content": "Vector databases are specialized database systems designed to store and query high-dimensional vectors efficiently. They are essential for modern AI applications that work with embeddings.",
+            "author": "Jane Smith",
+            "category": "Technology"
+          }
+        },
+        {
+          "embedding": [1,1,1,1,1,0,0,0],
+          "data": {
+            "title": "Getting Started with Weaviate",
+            "content": "Weaviate is an open-source vector database that allows you to store data objects and vector embeddings from your favorite ML-models, and scale seamlessly into billions of data objects.",
+            "author": "John Doe",
+            "category": "Tutorial"
+          }
+        },
+        {
+          "embedding": [0,0,1,1,1,0,0,1],
+          "data": {
+            "title": "Machine Learning in Production",
+            "content": "Deploying machine learning models in production requires careful consideration of scalability, monitoring, and data management. Vector databases play a crucial role in this ecosystem.",
+            "author": "Alice Johnson",
+            "category": "Machine Learning"
+          }
+        },
+        {
+          "embedding": [1,0,1,0,1,0,1,0],
+          "data": {
+            "title": "The Future of Semantic Search",
+            "content": "Semantic search goes beyond keyword matching to understand the intent and contextual meaning of search queries. Vector databases enable this by storing semantic representations of data.",
+            "author": "Bob Williams",
+            "category": "Search"
+          }
+        },
+        {
+          "embedding": [0,1,0,1,0,1,0,0.5],
+          "data": {
+            "title": "Building RAG Applications",
+            "content": "Retrieval-Augmented Generation (RAG) combines the power of large language models with external knowledge retrieval. Vector databases are the backbone of efficient RAG systems.",
+            "author": "Jane Smith",
+            "category": "AI"
+          }
+        }
+      ]
