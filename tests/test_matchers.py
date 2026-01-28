@@ -75,7 +75,7 @@ class WeaviateQueryMatcherTest(unittest.TestCase):
 
 
         #test
-        self.assertIsNotNone(to_test(**args))
+        self.assertGreaterEqual(len(to_test(**args)), 5)
         
     
     @unittest.skipIf(not environ.get("KB_HOST"), "no env variable set")
@@ -124,6 +124,25 @@ class WeaviateQueryMatcherTest(unittest.TestCase):
             "self": matchers.WeaviateQueryKeyMatcher("content", filter=lambda : matchers.Filter.by_property("author").equal("Jane Smith")),
             "data": None,
             "knowledgebase": matchers.WeaviateKB(environ.get("KB_HOST"), environ.get("KB_PORT"), environ.get("KB_COLLECTION"))
+        }
+
+
+        #test
+        self.assertEqual(len(to_test(**args)), 2)
+
+
+
+    @unittest.skipIf(not environ.get("KB_HOST"), "no env variable set")
+    @unittest.skipIf(not environ.get("KB_PORT"), "no env variable set")
+    @unittest.skipIf(not environ.get("KB_COLLECTION"), "no env variable set")
+    def test_keymatch_with_filterarg(self):
+        to_test = matchers.WeaviateQueryKeyMatcher.match
+
+        args = {
+            "self": matchers.WeaviateQueryKeyMatcher("content", filter=lambda x : matchers.Filter.by_property("author").equal(x)),
+            "data": None,
+            "knowledgebase": matchers.WeaviateKB(environ.get("KB_HOST"), environ.get("KB_PORT"), environ.get("KB_COLLECTION")),
+            "x": "Jane Smith"
         }
 
 
