@@ -63,10 +63,10 @@ class WeaviateQueryMatcher(Chatbot.Matcher):
 
     @override
     @batchable(inherent=True)
-    def match(self, data, knowledgebase, **args):
+    def match(self, data, knowledgebase):
         assert isinstance(knowledgebase, WeaviateKB)
 
-        return knowledgebase.query(**({"filter": None if not self.filter else self.filter() if callable(self.filter) else self.filter} | args))
+        return knowledgebase.query(filter= None if not self.filter else self.filter() if callable(self.filter) else self.filter)
 
 
 class WeaviateQueryKeyMatcher(WeaviateQueryMatcher):
@@ -76,8 +76,8 @@ class WeaviateQueryKeyMatcher(WeaviateQueryMatcher):
         self.data_key = data_key
 
     @override
-    def match(self, data, knowledgebase, **args):
-        results = super().match(data, knowledgebase, **args)
+    def match(self, data, knowledgebase):
+        results = super().match(data, knowledgebase)
         results = sorted(results, key= lambda x: x.get("data").get(self.data_key) or "")
         results = [ x.get("data").get(self.data_key, None) for x in results ]
 

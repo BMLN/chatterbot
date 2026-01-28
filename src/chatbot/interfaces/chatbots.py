@@ -25,19 +25,22 @@ class KnowledgeBot(Chatbot):
 
 
     @override
-    def respond(self, text, context=None, instructions=None):
+    def respond(self, text, context=None, instructions=None, *args, **kwargs):
+        vec_args, match_args, instr_args, gen_args = self._bound_args(*args, **kwargs)
+
+
         if instructions:
             pass
 
         else:
-            if context is None and self.knowledgebase and self.vectorizer and self.matcher:
-                if not(context := self.matcher.match(self.vectorizer.vectorize(text), self.knowledgebase)):
+            if context is None and self.knowledgebase and self.matcher:
+                if not(context := self.matcher.match(text if not self.vectorizer else self.vectorizer.vectorize(text, **vec_args), self.knowledgebase, **match_args)):
                     raise KnowledgeBot.NoContextError
 
             if self.instructor:
-                instructions = self.instructor.create_instructions(text, context)
+                instructions = self.instructor.create_instructions(text, context, **instr_args)
 
-        return self.generator.generate(**instructions)
+        return self.generator.generate(**({k: v for d in instructions for k, v in d.items()} | gen_args))
     
 
 
@@ -57,13 +60,13 @@ class ToolBot(Chatbot):
 
 
     @override
-    def respond(self, text):
+    def respond(self, text, *args, **kwargs):
         response = None
         
         with self.toolbox as toolbox:
             while (tool := toolbox.get_tool()) is not None:
                 try:
-                    potential_response = tool.apply(text)
+                    potential_response = tool.apply(text, **self._bound_args(tool.apply, *args, **kwargs))
 
                     if self.text_modifier:
                         text = self.text_modifier(potential_response)
