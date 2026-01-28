@@ -1,6 +1,6 @@
 from .chatbot import Chatbot
 from .toolbox import ToolBox
-
+from .arghandler import bind_args
 
 from typing import override
 
@@ -66,7 +66,7 @@ class ToolBot(Chatbot):
         with self.toolbox as toolbox:
             while (tool := toolbox.get_tool()) is not None:
                 try:
-                    potential_response = tool.apply(text, **self._bound_args(tool.apply, *args, **kwargs))
+                    potential_response = tool.apply(text, **bind_args(tool.apply, args, kwargs))
 
                     if self.text_modifier:
                         text = self.text_modifier(potential_response)
