@@ -61,8 +61,7 @@ class ToolBot(Chatbot):
 
     @override
     def respond(self, text, *args, **kwargs):
-        response = None
-        
+                
         with self.toolbox as toolbox:
             while (tool := toolbox.get_tool()) is not None:
                 try:
@@ -76,10 +75,10 @@ class ToolBot(Chatbot):
                     if not self.evaluator:
                         return potential_response
                     
-                    elif self.evaluator(response):
+                    elif self.evaluator(potential_response):
                         return potential_response
 
-                except Exception as e:
+                except Exception:
                     pass
         
         raise ToolBox.ToolError()
