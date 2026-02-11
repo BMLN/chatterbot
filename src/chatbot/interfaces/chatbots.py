@@ -25,23 +25,23 @@ class KnowledgeBot(Chatbot):
 
 
     @override
-    def respond(self, text, context=None, instructions=None, *args, **kwargs):
-        vec_args, match_args, instr_args, gen_args = self._bound_args(*args, **kwargs)
+    def respond(self, text, context=None, instructions=None, *args, **kwargs):        
+        vec_args, match_args, instr_args, gen_args = self._bound_args(*list(args), **kwargs)
 
 
         if instructions:
             pass
 
         else:
-            if context is None and self.knowledgebase and self.matcher:
-                if not(context := self.matcher.match(text if not self.vectorizer else self.vectorizer.vectorize(text, **vec_args), self.knowledgebase, **match_args)):
+            if context is None and self.matcher and self.knowledgebase:
+                if not(context := self.matcher.match(text if not self.vectorizer else self.vectorizer.vectorize(text, *vec_args[0], *vec_args[1], **vec_args[2]), self.knowledgebase, *match_args[0], *match_args[1], **match_args[2])):
                     raise KnowledgeBot.NoContextError
 
-            if self.instructor:
-                instructions = self.instructor.create_instructions(text, context, **instr_args)
+            instructions = self.instructor.create_instructions(text, context, *instr_args[0], *instr_args[1], **instr_args[2])
 
-        return self.generator.generate(**({k: v for d in instructions for k, v in d.items()} | gen_args))
-    
+
+        return self.generator.generate(*gen_args[0], **({k: v for d in instructions for k, v in d.items()} | gen_args[1] | gen_args[2]))
+
 
 
 
@@ -66,7 +66,8 @@ class ToolBot(Chatbot):
         with self.toolbox as toolbox:
             while (tool := toolbox.get_tool()) is not None:
                 try:
-                    potential_response = tool.apply(text, **bind_args(tool.apply, args, kwargs))
+                    tool_args = bind_args(tool.apply, list(args), kwargs, ignore_until=1)
+                    potential_response = tool.apply(text, *tool_args[0][1:], *tool_args[1], **tool_args[2])
 
                     if self.text_modifier:
                         text = self.text_modifier(potential_response)
@@ -78,7 +79,7 @@ class ToolBot(Chatbot):
                     elif self.evaluator(response):
                         return potential_response
 
-                except:
+                except Exception as e:
                     pass
         
         raise ToolBox.ToolError()

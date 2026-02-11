@@ -10,7 +10,7 @@ from types import FunctionType, MethodType
 
 from functools import wraps
 
-from inspect import signature, ismethod
+from inspect import signature, ismethod, Parameter
 
 
 
@@ -498,22 +498,46 @@ class Chatbot():
 
         return output
 
+    #TODO: ugly impl so far
+    def _bound_args(self, *args, **kwargs):
+        output = []
+        
+        
+        for x in [ self.vectorizer, self.matcher, self.instructor, self.generator ]:
+            if not x:
+                output.append(([], {}, {}))
+        
+            if isinstance(x, Chatbot.Vectorizer):
+                output.append(bind_args(x.vectorize, args, kwargs, ignore_until=1))
 
-    def respond(self, text, context=None, instructions=None, *args, **kwargs):
-        vec_args, match_args, instr_args, gen_args = self._bound_args(*args, **kwargs)
-        print("mmmms", vec_args, match_args, instr_args, gen_args)
+            elif isinstance(x, Chatbot.Matcher):
+                output.append(bind_args(x.match, args, kwargs, ignore_until=2))
+
+            elif isinstance(x, Chatbot.Instructor):
+                    output.append(bind_args(x.create_instructions, args, kwargs, ignore_until=2))
+
+            elif isinstance(x, Chatbot.Generator):
+                output.append(([], {}, {}))
+
+
+        return output
+
+
+    def respond(self, text, context=None, instructions=None, *args, **kwargs):        
+        vec_args, match_args, instr_args, gen_args = self._bound_args(*list(args), **kwargs)
+
 
         if instructions:
             pass
 
         else:
             if context is None and self.matcher and self.knowledgebase:
-                context = self.matcher.match(text if not self.vectorizer else self.vectorizer.vectorize(text, **vec_args), self.knowledgebase, **match_args)
+                context = self.matcher.match(text if not self.vectorizer else self.vectorizer.vectorize(text, *vec_args[0], *vec_args[1], **vec_args[2]), self.knowledgebase, *match_args[0], *match_args[1], **match_args[2])
 
-            instructions = self.instructor.create_instructions(text, context, **instr_args)
+            instructions = self.instructor.create_instructions(text, context, *instr_args[0], *instr_args[1], **instr_args[2])
 
 
-        return self.generator.generate(**({k: v for d in instructions for k, v in d.items()} | gen_args))
+        return self.generator.generate(*gen_args[0], **({k: v for d in instructions for k, v in d.items()} | gen_args[1] | gen_args[2]))
 
 
 

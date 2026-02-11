@@ -56,7 +56,6 @@ class MockedbotTest(unittest.TestCase):
             
     class ExtendedMockMatcher(MockMatcher):
         def match(self, data, knowledgebase, additional_context=None):
-            print(additional_context)
             return super().match(data, knowledgebase) + additional_context if additional_context else []
 
     class MockInstructor(chatbots.Chatbot.Instructor):
@@ -142,6 +141,126 @@ class MockedbotTest(unittest.TestCase):
             "Help me!",
             None, 
             None,
-            additional_context=["somemore"]
+            additional_context=[["somemore"]]
+        )
+        self.assertEqual(result, "I generated!")
+
+
+
+
+
+class MockedKnowledgebotTest(unittest.TestCase):
+
+    #comp defs
+    class MockKB(chatbots.Chatbot.KnowledgeBase):
+        def create(self, id, data, **args):
+            return super().create(id, data, **args)
+        def create_id(self, data):
+            return super().create_id(data)
+        def delete(self, id, **args):
+            return super().delete(id, **args)
+        def retrieve(self, id, **args):
+            return super().retrieve(id, **args)
+        def search(self, **args):
+            return super().search(**args)
+        def update(self, id, **args):
+            return super().update(id, **args)
+
+    class MockVec(chatbots.Chatbot.Vectorizer):
+        def vectorize(self, text):
+            return [0,1,0,1]
+            
+    class MockMatcher(chatbots.Chatbot.Matcher):
+        def match(self, data, knowledgebase):
+            return ["Doc1", "Doc2"]
+            
+    class ExtendedMockMatcher(MockMatcher):
+        def match(self, data, knowledgebase, additional_context=None):
+            return super().match(data, knowledgebase) + additional_context if additional_context else []
+
+    class MockInstructor(chatbots.Chatbot.Instructor):
+        def create_instructions(self, text, context, **args):
+            return {}
+
+    class MockGenerator(chatbots.Chatbot.Generator):
+        def generate(self, **args):
+            return "I generated!"
+    
+    
+    
+
+    def test_noargs(self):
+        to_test = chatbots.KnowledgeBot.respond
+
+        #test
+        result = to_test(
+            chatbots.KnowledgeBot(
+                self.MockKB(), 
+                self.MockVec(), 
+                self.MockMatcher(),
+                self.MockInstructor(),
+                self.MockGenerator()
+            ), 
+            "Help me!"
+        )
+        self.assertEqual(result, "I generated!")
+
+
+    def test_generalnoneargs(self):
+        to_test = chatbots.KnowledgeBot.respond
+
+        #test
+        result = to_test(
+            chatbots.KnowledgeBot(
+                self.MockKB(), 
+                self.MockVec(), 
+                self.MockMatcher(),
+                self.MockInstructor(),
+                self.MockGenerator()
+            ), 
+            "Help me!",
+            None, 
+            None
+        )
+        self.assertEqual(result, "I generated!")
+
+
+    def test_additionalargs(self):
+        to_test = chatbots.KnowledgeBot.respond
+
+        #test
+        result = to_test(
+            chatbots.KnowledgeBot(
+                self.MockKB(), 
+                self.MockVec(), 
+                self.MockMatcher(),
+                self.MockInstructor(),
+                self.MockGenerator()
+            ), 
+            "Help me!",
+            None, 
+            None,
+            data="somemore"
+        )
+        self.assertEqual(result, "I generated!")
+
+    def test_additionalmatchingargs(self):
+        to_test = chatbots.KnowledgeBot.respond
+
+        #test
+        check_on = self.ExtendedMockMatcher()
+        check_on.match = Mock()
+        result = to_test(
+            chatbots.KnowledgeBot(
+                self.MockKB(), 
+                self.MockVec(), 
+                self.ExtendedMockMatcher(),
+                self.MockInstructor(),
+                self.MockGenerator()
+            ), 
+            "Help me!",
+            None, 
+            None,
+            additional_context=[["somemore"]]
         )
         self.assertEqual(result, "I generated!")

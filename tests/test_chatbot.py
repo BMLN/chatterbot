@@ -93,8 +93,13 @@ class CheckFuncArgsTest(unittest.TestCase):
 
 
 
-
-
+class BoundArgsTest(unittest.TestCase):
+    
+    def test_boundargs(self):
+        to_test = chatbot.Chatbot._bound_args
+        
+        
+        #setup
 
 
 
